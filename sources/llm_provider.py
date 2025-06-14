@@ -152,7 +152,8 @@ class Provider:
         Use local or remote Ollama server to generate text.
         """
         thought = ""
-        host = "http://localhost:11434" if self.is_local else f"http://{self.server_address}"
+        # Always use configured server_address to support Docker environments
+        host = f"http://{self.server_address}"
         client = OllamaClient(host=host)
 
         try:
@@ -160,6 +161,7 @@ class Provider:
                 model=self.model,
                 messages=history,
                 stream=True,
+                options={"num_ctx": 8192}  # Increase context window
             )
             for chunk in stream:
                 if verbose:

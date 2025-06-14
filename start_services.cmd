@@ -3,7 +3,7 @@
 if "%1"=="full" (
     echo Starting full deployment...
 ) else (
-    echo Starting partial deployment... (backend run on host), use "full" to run all services in containers
+    echo Starting partial deployment... 
 )
 
 where openssl >nul 2>&1
