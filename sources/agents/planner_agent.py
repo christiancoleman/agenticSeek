@@ -259,6 +259,7 @@ class PlannerAgent(Agent):
         agents_tasks = []
         required_infos = None
         agents_work_result = dict()
+        answer = "Process stopped before completion."  # Default value in case of early stop
 
         self.status_message = "Making a plan..."
         agents_tasks = await self.make_plan(goal)
@@ -280,9 +281,13 @@ class PlannerAgent(Agent):
             try:
                 answer, success = await self.start_agent_process(task, required_infos)
             except Exception as e:
+                self.logger.error(f"Error during agent process: {str(e)}")
+                answer = f"Error occurred: {str(e)}"
                 raise e
             if self.stop:
                 pretty_print(f"Requested stop.", color="failure")
+                answer = f"Process stopped by user after {i} of {steps} tasks completed."
+                break  # Exit the loop properly
             agents_work_result[task['id']] = answer
             agents_tasks = await self.update_plan(goal, agents_tasks, agents_work_result, task['id'], success)
             steps = len(agents_tasks)
