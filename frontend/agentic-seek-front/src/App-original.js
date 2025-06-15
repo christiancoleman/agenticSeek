@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import './App.css';
+import { colors } from './colors';
 
+//const BACKEND_URL = process.env.BACKEND_PORT || 'http://0.0.0.0:8000';
 const BACKEND_URL = process.env.BACKEND_PORT || 'http://localhost:8000';
 
 function App() {
@@ -16,23 +18,15 @@ function App() {
     const [status, setStatus] = useState('Agents ready');
     const [expandedReasoning, setExpandedReasoning] = useState(new Set());
     const messagesEndRef = useRef(null);
-    
-    // New states for enhancements
-    const [theme, setTheme] = useState(() => 
-        localStorage.getItem('agenticseek_theme') || 'dark'
-    );
-    const [chatHistory, setChatHistory] = useState(() => {
-        const saved = localStorage.getItem('agenticseek_history');
-        return saved ? JSON.parse(saved) : [];
-    });
-    const [showSidebar, setShowSidebar] = useState(true);
-    const [currentChatId, setCurrentChatId] = useState(null);
 
-    // Apply theme on mount and change
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('agenticseek_theme', theme);
-    }, [theme]);
+        const intervalId = setInterval(() => {
+            checkHealth();
+            fetchLatestAnswer();
+            fetchScreenshot();
+        }, 3000);
+        return () => clearInterval(intervalId);
+    }, [messages]);
 
     const checkHealth = async () => {
         try {
@@ -97,19 +91,7 @@ function App() {
         });
     };
 
-    const updateData = (data) => {
-        setResponseData((prev) => ({
-            ...prev,
-            blocks: data.blocks || prev?.blocks || null,
-            done: data.done,
-            answer: data.answer,
-            agent_name: data.agent_name,
-            status: data.status,
-            uid: data.uid,
-        }));
-    };
-
-    const fetchLatestAnswer = useCallback(async () => {
+    const fetchLatestAnswer = async () => {
         try {
             const res = await axios.get(`${BACKEND_URL}/latest_answer`);
             const data = res.data;
@@ -142,110 +124,18 @@ function App() {
         } catch (error) {
             console.error('Error fetching latest answer:', error);
         }
-    }, [messages]);
-
-    const saveHistoryToStorage = (history) => {
-        // Keep only last 50 chats
-        const trimmed = history.slice(0, 50);
-        localStorage.setItem('agenticseek_history', JSON.stringify(trimmed));
     };
 
-    const updateChatInHistory = useCallback(() => {
-        setChatHistory(prev => {
-            const updated = prev.map(chat => {
-                if (chat.id === currentChatId) {
-                    return {
-                        ...chat,
-                        messages: messages,
-                        title: messages[0]?.content.slice(0, 50) + '...' || chat.title,
-                        lastUpdated: new Date().toISOString()
-                    };
-                }
-                return chat;
-            });
-            saveHistoryToStorage(updated);
-            return updated;
-        });
-    }, [currentChatId, messages]);
-
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            checkHealth();
-            fetchLatestAnswer();
-            fetchScreenshot();
-        }, 3000);
-        return () => clearInterval(intervalId);
-    }, [fetchLatestAnswer]);
-
-    // Save current chat to history when messages update
-    useEffect(() => {
-        if (messages.length > 0 && currentChatId) {
-            updateChatInHistory();
-        }
-    }, [messages.length, currentChatId, updateChatInHistory]);
-
-    const startNewChat = () => {
-        if (isLoading) {
-            alert("Please wait for the current task to complete before starting a new chat.");
-            return;
-        }
-        
-        // Save current chat if it has messages
-        if (messages.length > 0) {
-            updateChatInHistory();
-        }
-        
-        // Create new chat
-        const newChatId = Date.now();
-        setCurrentChatId(newChatId);
-        setMessages([]);
-        setResponseData(null);
-        setError(null);
-        setStatus('Agents ready');
-        
-        // Create new chat entry
-        const newChat = {
-            id: newChatId,
-            title: "New Chat",
-            messages: [],
-            timestamp: new Date().toISOString(),
-            lastUpdated: new Date().toISOString()
-        };
-        
-        setChatHistory(prev => [newChat, ...prev]);
-        saveHistoryToStorage([newChat, ...chatHistory]);
-    };
-
-    const loadChat = (chatId) => {
-        if (isLoading) {
-            alert("Please wait for the current task to complete before switching chats.");
-            return;
-        }
-        
-        const chat = chatHistory.find(c => c.id === chatId);
-        if (chat) {
-            setCurrentChatId(chatId);
-            setMessages(chat.messages || []);
-            setError(null);
-            setStatus('Agents ready');
-        }
-    };
-
-    const deleteChat = (chatId, e) => {
-        e.stopPropagation(); // Prevent loading the chat when clicking delete
-        if (window.confirm("Are you sure you want to delete this chat?")) {
-            setChatHistory(prev => {
-                const updated = prev.filter(chat => chat.id !== chatId);
-                saveHistoryToStorage(updated);
-                
-                // If deleting current chat, start a new one
-                if (chatId === currentChatId) {
-                    startNewChat();
-                }
-                
-                return updated;
-            });
-        }
+    const updateData = (data) => {
+        setResponseData((prev) => ({
+            ...prev,
+            blocks: data.blocks || prev.blocks || null,
+            done: data.done,
+            answer: data.answer,
+            agent_name: data.agent_name,
+            status: data.status,
+            uid: data.uid,
+        }));
     };
 
     const handleStop = async (e) => {
@@ -254,7 +144,7 @@ function App() {
         setIsLoading(false);
         setError(null);
         try {
-            await axios.get(`${BACKEND_URL}/stop`);
+            const res = await axios.get(`${BACKEND_URL}/stop`);
             setStatus("Requesting stop...");
         } catch (err) {
             console.error('Error stopping the agent:', err);
@@ -268,21 +158,6 @@ function App() {
             console.log('Empty query');
             return;
         }
-        
-        // Initialize chat if needed
-        if (!currentChatId) {
-            const newChatId = Date.now();
-            setCurrentChatId(newChatId);
-            const newChat = {
-                id: newChatId,
-                title: query.slice(0, 50) + '...',
-                messages: [],
-                timestamp: new Date().toISOString(),
-                lastUpdated: new Date().toISOString()
-            };
-            setChatHistory([newChat, ...chatHistory]);
-        }
-        
         setMessages((prev) => [...prev, { type: 'user', content: query }]);
         setIsLoading(true);
         setError(null);
@@ -321,82 +196,11 @@ function App() {
     };
 
     return (
-        <div className="app" data-theme={theme}>
-            {/* Sidebar */}
-            <aside className={`sidebar ${showSidebar ? 'open' : 'closed'}`}>
-                <div className="sidebar-header">
-                    <h3>Chats</h3>
-                    <div className="sidebar-controls">
-                        <button 
-                            onClick={startNewChat} 
-                            className="new-chat-btn"
-                            disabled={isLoading}
-                            title={isLoading ? "Wait for current task to complete" : "New chat"}
-                        >
-                            + New
-                        </button>
-                        <button 
-                            onClick={() => setShowSidebar(!showSidebar)}
-                            className="toggle-sidebar-btn"
-                        >
-                            ◀
-                        </button>
-                    </div>
-                </div>
-                <div className="chat-list">
-                    {chatHistory.length === 0 ? (
-                        <div className="empty-history">No chats yet</div>
-                    ) : (
-                        chatHistory.map(chat => (
-                            <div 
-                                key={chat.id}
-                                className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                                onClick={() => loadChat(chat.id)}
-                            >
-                                <div className="chat-info">
-                                    <div className="chat-title">{chat.title}</div>
-                                    <div className="chat-date">
-                                        {new Date(chat.lastUpdated || chat.timestamp).toLocaleDateString()}
-                                    </div>
-                                </div>
-                                <button
-                                    className="delete-chat-btn"
-                                    onClick={(e) => deleteChat(chat.id, e)}
-                                    title="Delete chat"
-                                >
-                                    🗑️
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </aside>
-
-            {/* Toggle button when sidebar is closed */}
-            {!showSidebar && (
-                <button 
-                    className="show-sidebar-btn"
-                    onClick={() => setShowSidebar(true)}
-                >
-                    ▶
-                </button>
-            )}
-
-            <main className={`main ${showSidebar ? 'with-sidebar' : 'full-width'}`}>
-                <header className="header">
-                    <h1>AgenticSeek</h1>
-                    <div className="header-controls">
-                        <button 
-                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                            className="theme-toggle"
-                            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-                        >
-                            {theme === 'dark' ? '☀️' : '🌙'}
-                        </button>
-                    </div>
-                </header>
-                
-                {/* Rest of your existing UI remains the same */}
+        <div className="app">
+            <header className="header">
+                <h1>AgenticSeek</h1>
+            </header>
+            <main className="main">
                 <div className="app-sections">
                     <div className="chat-section">
                         <h2>Chat Interface</h2>
@@ -424,7 +228,7 @@ function App() {
                                                     <ReactMarkdown>{msg.reasoning}</ReactMarkdown>
                                                 </div>
                                             )}
-                                            {msg.type === 'agent' && msg.reasoning && (
+                                            {msg.type === 'agent' && (
                                                 <button 
                                                     className="reasoning-toggle"
                                                     onClick={() => toggleReasoning(index)}
