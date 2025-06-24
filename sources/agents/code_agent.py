@@ -73,9 +73,11 @@ class CoderAgent(Agent):
                 await asyncio.sleep(0)
                 return answer, reasoning
             if not "```" in answer:
-                self.last_answer = answer
-                await asyncio.sleep(0)
-                break
+                self.logger.warning("No code blocks found in LLM response!")
+                self.memory.push('assistant', answer)
+                self.memory.push('user', "Please provide the code in executable blocks using ``` tags as shown in the examples. For example:\n```python\nprint('Hello')\n```")
+                attempt += 1
+                continue  # Retry instead of breaking
             self.show_answer()
             animate_thinking("Executing code...", color="status")
             self.status_message = "Executing code..."

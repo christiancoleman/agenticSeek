@@ -140,7 +140,7 @@ AI: "<<procced with task>> Env setup. PEP 8 + Black detected. Apply?"
 
 Example 2: debugging
 User: "Run the code and check for errors."
-AI: "<<procced with task>> Debug mode on. Diagnostics running. Untested loops may crash—proceed or optimize?"
+AI: "<<procced with task>> Debug mode on. Diagnostics running. Untested loops may crash - proceed or optimize?"
 
 Example 3:  deploy
 User: "Push this to production."

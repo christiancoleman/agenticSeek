@@ -15,6 +15,7 @@ from sources.agents.browser_agent import BrowserAgent
 from sources.language import LanguageUtility
 from sources.utility import pretty_print, animate_thinking, timer_decorator
 from sources.logger import Logger
+from sources.conversation_logger import get_conversation_logger
 
 class AgentRouter:
     """
@@ -446,6 +447,10 @@ class AgentRouter:
         Returns:
             Agent: The selected agent
         """
+        # Log the initial user query
+        conv_logger = get_conversation_logger()
+        conv_logger.log_user_query(text)
+        
         assert len(self.agents) > 0, "No agents available."
         if len(self.agents) == 1:
             return self.agents[0]
@@ -456,7 +461,10 @@ class AgentRouter:
         complexity = self.estimate_complexity(text)
         if complexity == "HIGH":
             pretty_print(f"Complex task detected, routing to planner agent.", color="info")
-            return self.find_planner_agent()
+            planner = self.find_planner_agent()
+            # Log router decision
+            conv_logger.log_router_decision("planner_agent", complexity)
+            return planner
         try:
             best_agent = self.router_vote(text, labels, log_confidence=False)
         except Exception as e:
@@ -465,6 +473,8 @@ class AgentRouter:
             if best_agent == agent.role:
                 role_name = agent.role
                 pretty_print(f"Selected agent: {agent.agent_name} (roles: {role_name})", color="warning")
+                # Log router decision
+                conv_logger.log_router_decision(agent.type, complexity)
                 return agent
         pretty_print(f"Error choosing agent.", color="failure")
         self.logger.error("No agent selected.")

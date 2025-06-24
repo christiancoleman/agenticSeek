@@ -10,6 +10,7 @@ from sources.text_to_speech import Speech
 from sources.tools.tools import Tools
 from sources.logger import Logger
 from sources.memory import Memory
+from sources.conversation_logger import get_conversation_logger
 
 class PlannerAgent(Agent):
     def __init__(self, name, prompt_path, provider, verbose=False, browser=None):
@@ -168,6 +169,9 @@ class PlannerAgent(Agent):
             self.show_plan(agents_tasks, answer)
             ok = True
         self.logger.info(f"Plan made:\n{answer}")
+        # Log the plan to conversation logger
+        conv_logger = get_conversation_logger()
+        conv_logger.log_planner_plan(agents_tasks)
         return self.parse_agent_tasks(answer)
     
     async def update_plan(self, goal: str, agents_tasks: List[dict], agents_work_result: dict, id: str, success: bool) -> dict:
@@ -229,18 +233,35 @@ class PlannerAgent(Agent):
         """
         self.status_message = f"Starting task {task['task']}..."
         agent_prompt = self.make_prompt(task['task'], required_infos)
+        
+        # Log agent conversation start
+        conv_logger = get_conversation_logger()
+        conv_logger.start_agent_conversation(task['agent'], task['id'], agent_prompt)
+        
         pretty_print(f"Agent {task['agent']} started working...", color="status")
         self.logger.info(f"Agent {task['agent']} started working on {task['task']}.")
         answer, reasoning = await self.agents[task['agent'].lower()].process(agent_prompt, None)
         self.last_answer = answer
         self.last_reasoning = reasoning
+        
+        # Log agent response
+        conv_logger.log_agent_response(task['agent'], answer, reasoning)
+        
         self.blocks_result = self.agents[task['agent'].lower()].blocks_result
         agent_answer = self.agents[task['agent'].lower()].raw_answer_blocks(answer)
         success = self.agents[task['agent'].lower()].get_success
+        
+        # Log execution result
+        conv_logger.log_execution_result(success, agent_answer if not success else None)
+        
         self.agents[task['agent'].lower()].show_answer()
         pretty_print(f"Agent {task['agent']} completed task.", color="status")
         self.logger.info(f"Agent {task['agent']} finished working on {task['task']}. Success: {success}")
         agent_answer += "\nAgent succeeded with task." if success else "\nAgent failed with task (Error detected)."
+        
+        # End agent conversation
+        conv_logger.end_agent_conversation(task['agent'])
+        
         return agent_answer, success
     
     def get_work_result_agent(self, task_needs, agents_work_result):
@@ -289,4 +310,8 @@ class PlannerAgent(Agent):
             steps = len(agents_tasks)
             i += 1
 
+        # Log final result
+        conv_logger = get_conversation_logger()
+        conv_logger.log_final_result(answer)
+        
         return answer, ""

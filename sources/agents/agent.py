@@ -111,8 +111,20 @@ class Agent():
     
     def load_prompt(self, file_path: str) -> str:
         try:
+            # Try UTF-8 first
             with open(file_path, 'r', encoding="utf-8") as f:
                 return f.read()
+        except UnicodeDecodeError:
+            # Fall back to UTF-8 with error handling, replacing invalid characters
+            try:
+                with open(file_path, 'r', encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                    self.logger.warning(f"Unicode decode issue in {file_path}, some characters were replaced")
+                    return content
+            except Exception:
+                # Last resort: try Windows-1252 encoding
+                with open(file_path, 'r', encoding="windows-1252") as f:
+                    return f.read()
         except FileNotFoundError:
             raise FileNotFoundError(f"Prompt file not found at path: {file_path}")
         except PermissionError:
