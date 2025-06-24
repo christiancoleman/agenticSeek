@@ -75,12 +75,28 @@ class PlannerAgent(Agent):
         tasks_names = self.get_task_names(text)
 
         blocks, _ = self.tools["json"].load_exec_block(text)
-        if blocks == None:
+        if blocks is None or len(blocks) == 0:
+            self.logger.warning("No JSON blocks found in LLM response")
             return []
         for block in blocks:
-            line_json = json.loads(block)
+            try:
+                line_json = json.loads(block)
+            except json.JSONDecodeError as e:
+                self.logger.warning(f"Failed to parse JSON block: {e}")
+                continue
+                
             if 'plan' in line_json:
                 for task in line_json['plan']:
+                    # Ensure task is a dictionary
+                    if not isinstance(task, dict):
+                        self.logger.warning(f"Task is not a dictionary: {type(task)} - {task}")
+                        continue
+                    
+                    # Check if agent key exists
+                    if 'agent' not in task:
+                        self.logger.warning(f"Task missing 'agent' field: {task}")
+                        continue
+                        
                     if task['agent'].lower() not in [ag_name.lower() for ag_name in self.agents.keys()]:
                         self.logger.warning(f"Agent {task['agent']} does not exist.")
                         pretty_print(f"Agent {task['agent']} does not exist.", color="warning")
@@ -88,13 +104,13 @@ class PlannerAgent(Agent):
                     try:
                         agent = {
                             'agent': task['agent'],
-                            'id': task['id'],
-                            'task': task['task']
+                            'id': task.get('id', str(len(tasks) + 1)),  # Default ID if missing
+                            'task': task.get('task', 'No task description')  # Default description
                         }
-                    except:
-                        self.logger.warning("Missing field in json plan.")
+                    except Exception as e:
+                        self.logger.warning(f"Error creating agent dict: {e}")
                         return []
-                    self.logger.info(f"Created agent {task['agent']} with task: {task['task']}")
+                    self.logger.info(f"Created agent {task['agent']} with task: {task.get('task', 'No description')}")
                     if 'need' in task:
                         self.logger.info(f"Agent {task['agent']} was given info:\n {task['need']}")
                         agent['need'] = task['need']
@@ -160,6 +176,7 @@ class PlannerAgent(Agent):
             answer, reasoning = await self.llm_request()
             if "NO_UPDATE" in answer:
                 return []
+            self.logger.info(f"LLM response for plan update:\n{answer}")
             agents_tasks = self.parse_agent_tasks(answer)
             if agents_tasks == []:
                 self.show_plan(agents_tasks, answer)
@@ -207,9 +224,19 @@ class PlannerAgent(Agent):
         {next_task}
         Is the work done for task {id} leading to success or failure ? Did an agent fail with a task?
         If agent work was good: answer "NO_UPDATE"
-        If agent work is leading to failure: update the plan.
-        If a task failed add a task to try again or recover from failure. You might have near identical task twice.
-        plan should be within ```json like before.
+        If agent work is leading to failure: update the plan with the EXACT format:
+        ```json
+        {{
+          "plan": [
+            {{
+              "agent": "agent_name",
+              "id": "task_id",
+              "need": ["dependency_ids"],
+              "task": "task_description"
+            }}
+          ]
+        }}
+        ```
         You need to rewrite the whole plan, but only change the tasks after task {id}.
         Make the plan the same length as the original one or with only one additional step.
         Do not change past tasks. Change next tasks.
@@ -231,6 +258,17 @@ class PlannerAgent(Agent):
         Returns:
             str: The result of the agent process.
         """
+        # Validate task is a dictionary with required fields
+        if not isinstance(task, dict):
+            self.logger.error(f"Task is not a dictionary: {type(task)} - {task}")
+            return ("Error: Invalid task format", False)
+        
+        required_fields = ['task', 'agent', 'id']
+        for field in required_fields:
+            if field not in task:
+                self.logger.error(f"Task missing required field '{field}': {task}")
+                return (f"Error: Task missing {field} field", False)
+        
         self.status_message = f"Starting task {task['task']}..."
         agent_prompt = self.make_prompt(task['task'], required_infos)
         

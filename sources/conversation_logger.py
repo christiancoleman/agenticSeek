@@ -67,11 +67,21 @@ class ConversationLogger:
             
         with open(self.current_log_file, 'a', encoding='utf-8') as f:
             f.write(f"## 📋 Planner's Task Breakdown\n\n")
-            for i, task in enumerate(plan, 1):
-                f.write(f"### Task {i}: {task.get('agent', 'Unknown')}\n")
-                f.write(f"**ID**: {task.get('id', 'N/A')}\n")
-                f.write(f"**Dependencies**: {task.get('need', [])}\n")
-                f.write(f"**Description**: {task.get('task', 'No description')}\n\n")
+            for i, task_item in enumerate(plan, 1):
+                # Handle both list format [task_name, task_dict] and direct dict format
+                if isinstance(task_item, list) and len(task_item) >= 2:
+                    task_name, task = task_item[0], task_item[1]
+                    f.write(f"### Task {i}: {task_name}\n")
+                    f.write(f"**Agent**: {task.get('agent', 'Unknown')}\n")
+                    f.write(f"**ID**: {task.get('id', 'N/A')}\n")
+                    f.write(f"**Dependencies**: {task.get('need', [])}\n")
+                    f.write(f"**Description**: {task.get('task', 'No description')}\n\n")
+                elif isinstance(task_item, dict):
+                    # Direct dict format
+                    f.write(f"### Task {i}: {task_item.get('agent', 'Unknown')}\n")
+                    f.write(f"**ID**: {task_item.get('id', 'N/A')}\n")
+                    f.write(f"**Dependencies**: {task_item.get('need', [])}\n")
+                    f.write(f"**Description**: {task_item.get('task', 'No description')}\n\n")
             f.write("---\n\n")
     
     def start_agent_conversation(self, agent_name: str, task_id: str, prompt: str):
