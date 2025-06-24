@@ -41,9 +41,11 @@ class ConversationLogger:
             
         # Write header for transcript log
         with open(self.current_transcript_file, 'w', encoding='utf-8') as f:
-            f.write(f"# Raw Transcript - {timestamp}\n\n")
-            f.write("This log shows the exact messages sent to and received from the LLM.\n\n")
-            f.write("---\n\n")
+            f.write(f"[LOGGER: Raw Transcript - {timestamp}]\n\n")
+            f.write("[LOGGER: This log shows the exact messages sent to and received from the LLM.]\n")
+            f.write("[LOGGER: Everything prefixed with [LOGGER:] is added by the logging system.]\n")
+            f.write("[LOGGER: Everything else is the actual content sent to or received from the LLM.]\n\n")
+            f.write("[LOGGER: =====================================]\n\n")
     
     def log_user_query(self, query: str):
         """Log the initial user query."""
@@ -219,22 +221,47 @@ class ConversationLogger:
             return
             
         with open(self.current_transcript_file, 'a', encoding='utf-8') as f:
-            f.write(f"## LLM Interaction - {agent_name}\n")
-            f.write(f"**Time**: {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+            f.write(f"[LOGGER: LLM Interaction - {agent_name} at {datetime.datetime.now().strftime('%H:%M:%S')}]\n")
             if model:
-                f.write(f"**Model**: {model}\n")
-            f.write("\n### Messages Sent:\n\n")
+                f.write(f"[LOGGER: Model - {model}]\n")
+            f.write("[LOGGER: BEGIN MESSAGES SENT TO LLM]\n\n")
             
             # Log the full message history
             for msg in messages:
                 role = msg.get('role', 'unknown')
                 content = msg.get('content', '')
-                f.write(f"#### {role.upper()}\n")
-                f.write(f"```\n{content}\n```\n\n")
+                f.write(f"[LOGGER: ---{role.upper()} MESSAGE START---]\n")
+                f.write(content)
+                if not content.endswith('\n'):
+                    f.write('\n')
+                f.write(f"[LOGGER: ---{role.upper()} MESSAGE END---]\n\n")
             
-            f.write("### Response Received:\n")
-            f.write(f"```\n{response}\n```\n\n")
-            f.write("---\n\n")
+            f.write("[LOGGER: END MESSAGES SENT TO LLM]\n")
+            f.write("[LOGGER: BEGIN LLM RESPONSE]\n\n")
+            f.write("[LOGGER: ---RAW LLM RESPONSE START---]\n")
+            f.write(response)
+            if not response.endswith('\n'):
+                f.write('\n')
+            f.write("[LOGGER: ---RAW LLM RESPONSE END---]\n\n")
+            f.write("[LOGGER: =====================================]\n\n")
+    
+    def log_session_separator(self):
+        """Log a separator between conversations in the same session."""
+        if not self.enabled:
+            return
+            
+        separator = "\n" + "="*80 + "\n"
+        with open(self.current_log_file, 'a', encoding='utf-8') as f:
+            f.write(separator)
+            f.write("## 🔄 New Conversation in Session\n")
+            f.write(f"**Time**: {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+            f.write(separator + "\n")
+            
+        with open(self.current_transcript_file, 'a', encoding='utf-8') as f:
+            f.write(f"\n[LOGGER: {separator}]\n")
+            f.write("[LOGGER: 🔄 New Conversation in Session]\n")
+            f.write(f"[LOGGER: Time: {datetime.datetime.now().strftime('%H:%M:%S')}]\n")
+            f.write(f"[LOGGER: {separator}]\n\n")
     
     def get_log_file_path(self) -> Optional[Path]:
         """Get the current log file path."""

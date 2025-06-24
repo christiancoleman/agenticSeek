@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from sources.memory import Memory
 from sources.utility import pretty_print
 from sources.schemas import executorResult
+from sources.conversation_logger import get_conversation_logger
 
 random.seed(time.time())
 
@@ -189,7 +190,6 @@ class Agent():
         self.memory.push('assistant', answer)
         
         # Log the LLM interaction
-        from sources.conversation_logger import get_conversation_logger
         conv_logger = get_conversation_logger()
         model_name = self.llm.get_model_name() if hasattr(self.llm, 'get_model_name') else None
         conv_logger.log_llm_interaction(self.agent_name, memory, thought, model_name)

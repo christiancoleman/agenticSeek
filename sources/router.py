@@ -31,6 +31,7 @@ class AgentRouter:
         self.learn_few_shots_tasks()
         self.learn_few_shots_complexity()
         self.asked_clarify = False
+        self.query_count = 0  # Track number of queries in session
     
     def load_pipelines(self) -> Dict[str, Type[pipeline]]:
         """
@@ -449,7 +450,13 @@ class AgentRouter:
         """
         # Log the initial user query
         conv_logger = get_conversation_logger()
+        
+        # Add separator if this is not the first query
+        if self.query_count > 0:
+            conv_logger.log_session_separator()
+        
         conv_logger.log_user_query(text)
+        self.query_count += 1
         
         assert len(self.agents) > 0, "No agents available."
         if len(self.agents) == 1:
