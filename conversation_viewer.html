@@ -107,7 +107,12 @@
         <h1>🗂️ AgenticSeek Conversation Log Viewer</h1>
         
         <div class="file-selector">
-            <label for="logFile">Select a conversation log: </label>
+            <label for="logType">Log Type: </label>
+            <select id="logType" onchange="refreshFileList()">
+                <option value="conversation">Conversation Flow</option>
+                <option value="transcript">Raw Transcript</option>
+            </select>
+            <label for="logFile" style="margin-left: 20px;">Select a log: </label>
             <select id="logFile">
                 <option value="">Choose a file...</option>
             </select>
@@ -150,29 +155,34 @@
         }
         
         async function populateFileList() {
+            const logType = document.getElementById('logType').value;
+            const prefix = logType === 'transcript' ? 'transcript_' : 'conversation_';
             const select = document.getElementById('logFile');
             const files = await fetchFileList();
+            
+            // Filter files by type
+            const filteredFiles = files.filter(file => file.startsWith(prefix));
             
             // Clear existing options except the first
             select.innerHTML = '<option value="">Choose a file...</option>';
             
-            if (files.length === 0) {
+            if (filteredFiles.length === 0) {
                 select.innerHTML += '<option value="">No log files found</option>';
                 return;
             }
             
             // Sort files by name (newest first since they're timestamped)
-            files.sort().reverse();
+            filteredFiles.sort().reverse();
             
-            files.forEach(file => {
+            filteredFiles.forEach(file => {
                 const option = document.createElement('option');
                 option.value = `${LOG_DIR}/${file}`;
-                option.textContent = file.replace('.md', '');
+                option.textContent = file.replace('.md', '').replace(prefix, '');
                 select.appendChild(option);
             });
             
             // Auto-select the most recent file
-            if (files.length > 0) {
+            if (filteredFiles.length > 0) {
                 select.selectedIndex = 1;
                 loadSelectedFile();
             }

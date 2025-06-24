@@ -85,7 +85,9 @@ class PlannerAgent(Agent):
                 self.logger.warning(f"Failed to parse JSON block: {e}")
                 continue
                 
+            # Handle both {"plan": [...]} and direct task format
             if 'plan' in line_json:
+                # Standard format with plan array
                 for task in line_json['plan']:
                     # Ensure task is a dictionary
                     if not isinstance(task, dict):
@@ -118,6 +120,29 @@ class PlannerAgent(Agent):
                         self.logger.info(f"Agent {task['agent']} was given info:\n {task['need']}")
                         agent['need'] = task['need']
                     tasks.append(agent)
+            elif 'agent' in line_json and 'task' in line_json:
+                # Handle single task format (when LLM returns just one task)
+                self.logger.info(f"Detected single task format, converting to plan")
+                task = line_json
+                if task['agent'].lower() not in [ag_name.lower() for ag_name in self.agents.keys()]:
+                    self.logger.warning(f"Agent {task['agent']} does not exist.")
+                    pretty_print(f"Agent {task['agent']} does not exist.", color="warning")
+                    # Log the error to conversation logger
+                    conv_logger = get_conversation_logger()
+                    conv_logger.log_planner_error(f"Agent {task['agent']} does not exist", text)
+                    return []
+                try:
+                    agent = {
+                        'agent': task['agent'],
+                        'id': task.get('id', '1'),
+                        'task': task.get('task', 'No task description')
+                    }
+                    if 'need' in task:
+                        agent['need'] = task['need']
+                    tasks.append(agent)
+                except Exception as e:
+                    self.logger.warning(f"Error creating agent dict from single task: {e}")
+                    return []
         if len(tasks_names) != len(tasks):
             names = [task['task'] for task in tasks]
             return list(map(list, zip(names, tasks)))

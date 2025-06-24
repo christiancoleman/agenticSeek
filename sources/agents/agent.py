@@ -187,6 +187,13 @@ class Agent():
         reasoning = self.extract_reasoning_text(thought)
         answer = self.remove_reasoning_text(thought)
         self.memory.push('assistant', answer)
+        
+        # Log the LLM interaction
+        from sources.conversation_logger import get_conversation_logger
+        conv_logger = get_conversation_logger()
+        model_name = self.llm.get_model_name() if hasattr(self.llm, 'get_model_name') else None
+        conv_logger.log_llm_interaction(self.agent_name, memory, thought, model_name)
+        
         return answer, reasoning
     
     async def wait_message(self, speech_module):

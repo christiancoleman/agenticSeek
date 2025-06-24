@@ -19,6 +19,7 @@ class ConversationLogger:
         self.log_dir = Path(log_dir)
         self.current_session_id = None
         self.current_log_file = None
+        self.current_transcript_file = None
         self.conversation_stack = []
         
         if self.enabled:
@@ -30,11 +31,18 @@ class ConversationLogger:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.current_session_id = f"conversation_{timestamp}"
         self.current_log_file = self.log_dir / f"{self.current_session_id}.md"
+        self.current_transcript_file = self.log_dir / f"transcript_{timestamp}.md"
         
-        # Write header
+        # Write header for main log
         with open(self.current_log_file, 'w', encoding='utf-8') as f:
             f.write(f"# Conversation Log - {timestamp}\n\n")
             f.write("This log shows the sequential flow of agent conversations.\n\n")
+            f.write("---\n\n")
+            
+        # Write header for transcript log
+        with open(self.current_transcript_file, 'w', encoding='utf-8') as f:
+            f.write(f"# Raw Transcript - {timestamp}\n\n")
+            f.write("This log shows the exact messages sent to and received from the LLM.\n\n")
             f.write("---\n\n")
     
     def log_user_query(self, query: str):
@@ -204,6 +212,29 @@ class ConversationLogger:
             f.write(f"```\n{result}\n```\n\n")
             f.write("---\n\n")
             f.write(f"*End of conversation log*\n")
+    
+    def log_llm_interaction(self, agent_name: str, messages: list, response: str, model: str = None):
+        """Log raw LLM interactions to transcript file."""
+        if not self.enabled:
+            return
+            
+        with open(self.current_transcript_file, 'a', encoding='utf-8') as f:
+            f.write(f"## LLM Interaction - {agent_name}\n")
+            f.write(f"**Time**: {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+            if model:
+                f.write(f"**Model**: {model}\n")
+            f.write("\n### Messages Sent:\n\n")
+            
+            # Log the full message history
+            for msg in messages:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                f.write(f"#### {role.upper()}\n")
+                f.write(f"```\n{content}\n```\n\n")
+            
+            f.write("### Response Received:\n")
+            f.write(f"```\n{response}\n```\n\n")
+            f.write("---\n\n")
     
     def get_log_file_path(self) -> Optional[Path]:
         """Get the current log file path."""
