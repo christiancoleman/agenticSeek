@@ -60,13 +60,18 @@ class ConversationLogger:
                 f.write(f"**Complexity**: {complexity}\n")
             f.write("\n---\n\n")
     
-    def log_planner_plan(self, plan: list):
+    def log_planner_plan(self, plan: list, is_update: bool = False):
         """Log the planner's task breakdown."""
         if not self.enabled:
             return
             
         with open(self.current_log_file, 'a', encoding='utf-8') as f:
-            f.write(f"## 📋 Planner's Task Breakdown\n\n")
+            if is_update:
+                f.write(f"## 🔄 Updated Plan\n\n")
+                f.write("*The planner has revised the task breakdown:*\n\n")
+            else:
+                f.write(f"## 📋 Planner's Task Breakdown\n\n")
+                
             for i, task_item in enumerate(plan, 1):
                 # Handle both list format [task_name, task_dict] and direct dict format
                 if isinstance(task_item, list) and len(task_item) >= 2:
@@ -82,6 +87,39 @@ class ConversationLogger:
                     f.write(f"**ID**: {task_item.get('id', 'N/A')}\n")
                     f.write(f"**Dependencies**: {task_item.get('need', [])}\n")
                     f.write(f"**Description**: {task_item.get('task', 'No description')}\n\n")
+            f.write("---\n\n")
+    
+    def log_planner_error(self, error_msg: str, raw_response: str = None):
+        """Log planner errors and retry attempts."""
+        if not self.enabled:
+            return
+            
+        with open(self.current_log_file, 'a', encoding='utf-8') as f:
+            f.write(f"## ⚠️ Planner Error\n\n")
+            f.write(f"**Error**: {error_msg}\n\n")
+            if raw_response:
+                f.write(f"<details>\n<summary>Raw LLM Response</summary>\n\n```\n{raw_response}\n```\n</details>\n\n")
+            f.write("*Retrying...*\n\n")
+            f.write("---\n\n")
+    
+    def log_planner_reasoning(self, reasoning: str):
+        """Log the planner's reasoning before the task breakdown."""
+        if not self.enabled:
+            return
+            
+        with open(self.current_log_file, 'a', encoding='utf-8') as f:
+            f.write(f"## 🤔 Planner's Reasoning\n\n")
+            f.write(f"```\n{reasoning}\n```\n\n")
+            f.write("---\n\n")
+    
+    def log_no_update_decision(self):
+        """Log when planner decides no update is needed."""
+        if not self.enabled:
+            return
+            
+        with open(self.current_log_file, 'a', encoding='utf-8') as f:
+            f.write(f"## ✅ No Plan Update Required\n\n")
+            f.write("*The planner determined the current plan is still valid.*\n\n")
             f.write("---\n\n")
     
     def start_agent_conversation(self, agent_name: str, task_id: str, prompt: str):
@@ -105,11 +143,30 @@ class ConversationLogger:
         if not self.enabled:
             return
             
+        # Clean up internal tool references
+        cleaned_response = response
+        lines = response.split('\n')
+        cleaned_lines = []
+        skip_next = False
+        
+        for i, line in enumerate(lines):
+            # Skip "Tool: xxx" lines and the following "Block:" line
+            if line.strip().startswith("Tool:"):
+                skip_next = True
+                continue
+            if skip_next and line.strip().startswith("Block:"):
+                skip_next = False
+                continue
+            skip_next = False
+            cleaned_lines.append(line)
+        
+        cleaned_response = '\n'.join(cleaned_lines).strip()
+            
         with open(self.current_log_file, 'a', encoding='utf-8') as f:
             f.write(f"### {agent_name} Response:\n")
             if reasoning:
                 f.write(f"<details>\n<summary>Reasoning</summary>\n\n```\n{reasoning}\n```\n</details>\n\n")
-            f.write(f"```\n{response}\n```\n\n")
+            f.write(f"```\n{cleaned_response}\n```\n\n")
     
     def log_execution_result(self, success: bool, feedback: str = None):
         """Log the execution result of an agent's action."""

@@ -100,6 +100,9 @@ class PlannerAgent(Agent):
                     if task['agent'].lower() not in [ag_name.lower() for ag_name in self.agents.keys()]:
                         self.logger.warning(f"Agent {task['agent']} does not exist.")
                         pretty_print(f"Agent {task['agent']} does not exist.", color="warning")
+                        # Log the error to conversation logger
+                        conv_logger = get_conversation_logger()
+                        conv_logger.log_planner_error(f"Agent {task['agent']} does not exist", text)
                         return []
                     try:
                         agent = {
@@ -160,11 +163,12 @@ class PlannerAgent(Agent):
             pretty_print(f"{task['agent']} -> {task['task']}", color="info")
         pretty_print("▔▗ E N D ▖▔", color="status")
 
-    async def make_plan(self, prompt: str) -> str:
+    async def make_plan(self, prompt: str, is_update: bool = False) -> str:
         """
         Asks the LLM to make a plan.
         Args:
             prompt (str): The prompt to be sent to the LLM.
+            is_update (bool): Whether this is a plan update or initial plan.
         Returns:
             str: The plan made by the LLM.
         """
@@ -177,18 +181,30 @@ class PlannerAgent(Agent):
             if "NO_UPDATE" in answer:
                 return []
             self.logger.info(f"LLM response for plan update:\n{answer}")
+            
+            # Extract reasoning (everything before ```json)
+            json_start = answer.find("```json")
+            if json_start > 0:
+                plan_reasoning = answer[:json_start].strip()
+                if plan_reasoning and not is_update:  # Only log initial plan reasoning
+                    conv_logger = get_conversation_logger()
+                    conv_logger.log_planner_reasoning(plan_reasoning)
+            
             agents_tasks = self.parse_agent_tasks(answer)
             if agents_tasks == []:
                 self.show_plan(agents_tasks, answer)
                 prompt = f"Failed to parse the tasks. Please write down your task followed by a json plan within ```json. Do not ask for clarification.\n"
                 pretty_print("Failed to make plan. Retrying...", color="warning")
+                # Log the failed plan attempt
+                conv_logger = get_conversation_logger()
+                conv_logger.log_planner_error("Failed to parse tasks from LLM response", answer)
                 continue
             self.show_plan(agents_tasks, answer)
             ok = True
         self.logger.info(f"Plan made:\n{answer}")
         # Log the plan to conversation logger
         conv_logger = get_conversation_logger()
-        conv_logger.log_planner_plan(agents_tasks)
+        conv_logger.log_planner_plan(agents_tasks, is_update=is_update)
         return self.parse_agent_tasks(answer)
     
     async def update_plan(self, goal: str, agents_tasks: List[dict], agents_work_result: dict, id: str, success: bool) -> dict:
@@ -242,9 +258,11 @@ class PlannerAgent(Agent):
         Do not change past tasks. Change next tasks.
         """
         pretty_print("Updating plan...", color="status")
-        plan = await self.make_plan(update_prompt)
+        plan = await self.make_plan(update_prompt, is_update=True)
         if plan == []:
             pretty_print("No plan update required.", color="info")
+            conv_logger = get_conversation_logger()
+            conv_logger.log_no_update_decision()
             return agents_tasks
         self.logger.info(f"Plan updated:\n{plan}")
         return plan
@@ -282,11 +300,11 @@ class PlannerAgent(Agent):
         self.last_answer = answer
         self.last_reasoning = reasoning
         
-        # Log agent response
-        conv_logger.log_agent_response(task['agent'], answer, reasoning)
-        
         self.blocks_result = self.agents[task['agent'].lower()].blocks_result
         agent_answer = self.agents[task['agent'].lower()].raw_answer_blocks(answer)
+        
+        # Log agent response with expanded blocks
+        conv_logger.log_agent_response(task['agent'], agent_answer, reasoning)
         success = self.agents[task['agent'].lower()].get_success
         
         # Log execution result
