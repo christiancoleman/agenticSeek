@@ -147,7 +147,14 @@ def create_driver(headless=False, stealth_mode=True, crx_path="./crx/nopecha.crx
     profile_dir = f"/tmp/chrome_profile_{uuid.uuid4().hex[:8]}"
     chrome_options.add_argument(f'--user-data-dir={profile_dir}')
     chrome_options.add_argument(f"--accept-lang={lang}-{lang.upper()},{lang};q=0.9")
-    chrome_options.add_argument("--disable-extensions")
+    # Only disable extensions if we're not loading the captcha solver
+    if stealth_mode or not os.path.exists(crx_path):
+        pretty_print("***************************************************************************************")
+        pretty_print(f"Stealth mode enabled?{stealth_mode} or AntiCaptcha CRX not found at {crx_path}.", color="warning")
+        pretty_print("Disabling extensions for stealth mode or missing AntiCaptcha CRX.", color="warning")
+        #chrome_options.add_argument("--disable-extensions")
+        pretty_print("***************************************************************************************")
+    
     chrome_options.add_argument("--disable-background-timer-throttling")
     chrome_options.add_argument("--timezone=Europe/Paris")
     chrome_options.add_argument('--remote-debugging-port=9222')
