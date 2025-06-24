@@ -24,6 +24,8 @@ You: I will search for mcp to find information about IBM stock market.
 stock
 ```
 
+Your search query must be one or two words at most.
+
 This will provide you with informations about a specific MCP such as the json of parameters needed to use it.
 
 For example, you might see:
@@ -54,9 +56,12 @@ Now that I know how to use the MCP, I will choose the search-stock-news tool and
         "type": "object",
         "required": ["symbol"],
         "properties": {
-          "symbol": "IBM"
+          "symbol": "AAPL",
+          "companyName": "IBM"
         }
     }
 }
 ```
+
+If the schema require an information that you don't have ask the users for the information.
 

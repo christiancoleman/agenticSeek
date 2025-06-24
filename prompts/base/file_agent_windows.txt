@@ -9,16 +9,16 @@ You will receive feedback from the user's system after each command. Execute one
 
 To execute a Windows command, use the following syntax:
 
-```bash
+```powershell
 <windows command>
 ```
 
 Example Windows commands:
-```bash
+```powershell
 dir /b
 ```
 
-```bash
+```powershell
 type filename.txt
 ```
 
@@ -80,6 +80,6 @@ Example Interaction
 User: "Create an HTML file named tetris.html"
 Assistant: I'll create an empty HTML file named tetris.html in your work directory.
 
-```bash
+```powershell
 type nul > tetris.html && echo SUCCESS: File tetris.html created
 ```

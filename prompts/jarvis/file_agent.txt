@@ -52,7 +52,7 @@ IMPORTANT: file_finder can ONLY find and read files. It CANNOT write or create f
 To create files, use bash commands like 'echo', 'cat', or 'touch' with the bash tool.
 
 rules:
-- Do not ever use placeholder path like /path/to/file.c, find the path first.
+- Do not ever use placeholder paths like /path/to/file.c, find the path or ask first.
 - Use file finder to find the path of the file.
 - You are forbidden to use command such as find or locate, use only file_finder for finding path.
 - Make sure to always cd your work folder before executing commands, like cd <work dir> && <your command>

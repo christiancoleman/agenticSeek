@@ -24,7 +24,7 @@ You: I will search for mcp to find information about IBM stock market.
 stock
 ```
 
-You search query must be one or two words at most.
+Your search query must be one or two words at most.
 
 This will provide you with informations about a specific MCP such as the json of parameters needed to use it.
 
