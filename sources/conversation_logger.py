@@ -23,6 +23,7 @@ class ConversationLogger:
         self.current_transcript_file = None
         self.conversation_stack = []
         self.api_sequence_number = 0
+        self.current_api_request_info = None  # Store info about current API request
         
         if self.enabled:
             self.log_dir.mkdir(exist_ok=True)
@@ -295,6 +296,14 @@ class ConversationLogger:
             
         self.api_sequence_number += 1
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Store request info for matching with response
+        self.current_api_request_info = {
+            'sequence': self.api_sequence_number,
+            'timestamp': timestamp,
+            'agent': agent_name
+        }
+        
         filename = f"{self.current_session_id}_{self.api_sequence_number:03d}_req_{timestamp}_{agent_name}.json"
         filepath = self.session_folder / filename
         
@@ -322,14 +331,24 @@ class ConversationLogger:
         if not self.enabled:
             return
             
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{self.current_session_id}_{self.api_sequence_number:03d}_res_{timestamp}_{agent_name}.json"
+        # Use the stored request info to match the response
+        if self.current_api_request_info:
+            sequence = self.current_api_request_info['sequence']
+            req_timestamp = self.current_api_request_info['timestamp']
+            req_agent = self.current_api_request_info['agent']
+        else:
+            # Fallback if no request info stored
+            sequence = self.api_sequence_number
+            req_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            req_agent = agent_name
+            
+        filename = f"{self.current_session_id}_{sequence:03d}_res_{req_timestamp}_{req_agent}.json"
         filepath = self.session_folder / filename
         
         response_data = {
             "timestamp": datetime.datetime.now().isoformat(),
-            "sequence": self.api_sequence_number,
-            "agent": agent_name,
+            "sequence": sequence,
+            "agent": req_agent,
             "provider": provider,
             "status_code": status_code,
             "headers": dict(headers) if headers else {},

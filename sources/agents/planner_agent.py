@@ -24,10 +24,10 @@ class PlannerAgent(Agent):
         self.tools['json'].tag = "json"
         self.browser = browser
         self.agents = {
-            "coder": CoderAgent(name, "prompts/base/coder_agent.txt", provider, verbose=False),
-            "file": FileAgent(name, "prompts/base/file_agent.txt", provider, verbose=False),
-            "web": BrowserAgent(name, "prompts/base/browser_agent.txt", provider, verbose=False, browser=browser),
-            "casual": CasualAgent(name, "prompts/base/casual_agent.txt", provider, verbose=False)
+            "coder": CoderAgent("Coder", "prompts/base/coder_agent.txt", provider, verbose=False),
+            "file": FileAgent("File", "prompts/base/file_agent.txt", provider, verbose=False),
+            "web": BrowserAgent("Web", "prompts/base/browser_agent.txt", provider, verbose=False, browser=browser),
+            "casual": CasualAgent("Casual", "prompts/base/casual_agent.txt", provider, verbose=False)
         }
         self.role = "planification"
         self.type = "planner_agent"
