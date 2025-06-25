@@ -183,7 +183,7 @@ class Agent():
         Ask the LLM to process the prompt and return the answer and the reasoning.
         """
         memory = self.memory.get()
-        thought = self.llm.respond(memory, self.verbose)
+        thought = self.llm.respond(memory, self.verbose, agent_name=self.agent_name)
 
         reasoning = self.extract_reasoning_text(thought)
         answer = self.remove_reasoning_text(thought)
@@ -193,6 +193,8 @@ class Agent():
         conv_logger = get_conversation_logger()
         model_name = self.llm.get_model_name() if hasattr(self.llm, 'get_model_name') else None
         conv_logger.log_llm_interaction(self.agent_name, memory, thought, model_name)
+        
+        # TODO: Add API request/response logging here once we intercept the actual HTTP calls
         
         return answer, reasoning
     

@@ -13,6 +13,7 @@ from openai import OpenAI
 
 from sources.logger import Logger
 from sources.utility import pretty_print, animate_thinking
+from sources.conversation_logger import get_conversation_logger
 
 class Provider:
     def __init__(self, provider_name, model, server_address="127.0.0.1:5000", is_local=False):
@@ -65,10 +66,13 @@ class Provider:
             return "http://localhost", False
         return url, True
 
-    def respond(self, history, verbose=True):
+    def respond(self, history, verbose=True, agent_name="unknown"):
         """
         Use the choosen provider to generate text.
         """
+        # Store agent name for API logging
+        self._current_agent_name = agent_name
+        
         llm = self.available_providers[self.provider_name]
         self.logger.info(f"Using provider: {self.provider_name} at {self.server_ip}")
         try:
@@ -159,29 +163,102 @@ class Provider:
         """
         Use local or remote Ollama server to generate text.
         """
+        import time
+        import json
+        
         thought = ""
         host = f"{self.internal_url}:11434" if self.is_local else f"http://{self.server_address}"
         client = OllamaClient(host=host)
+        
+        # Get conversation logger and agent name from context
+        conv_logger = get_conversation_logger()
+        agent_name = getattr(self, '_current_agent_name', 'unknown')
+        
+        # Prepare request data
+        url = f"{host}/api/chat"
+        request_body = {
+            "model": self.model,
+            "messages": history,
+            "stream": True
+        }
+        
+        # Log the request
+        start_time = time.time()
+        conv_logger.log_api_request(
+            agent_name=agent_name,
+            provider="ollama",
+            url=url,
+            headers={"Content-Type": "application/json"},
+            body=request_body
+        )
 
         try:
+            # Collect response chunks
+            response_chunks = []
+            
             stream = client.chat(
                 model=self.model,
                 messages=history,
                 stream=True,
             )
             for chunk in stream:
+                response_chunks.append(chunk)
                 if verbose:
                     print(chunk["message"]["content"], end="", flush=True)
                 thought += chunk["message"]["content"]
+                
+            # Log the response
+            duration_ms = (time.time() - start_time) * 1000
+            response_body = {
+                "model": self.model,
+                "created_at": response_chunks[0].get("created_at") if response_chunks else None,
+                "message": {
+                    "role": "assistant",
+                    "content": thought
+                },
+                "done": True,
+                "total_duration": response_chunks[-1].get("total_duration") if response_chunks else None,
+                "eval_count": response_chunks[-1].get("eval_count") if response_chunks else None,
+                "prompt_eval_count": response_chunks[-1].get("prompt_eval_count") if response_chunks else None
+            }
+            
+            conv_logger.log_api_response(
+                agent_name=agent_name,
+                provider="ollama",
+                status_code=200,
+                headers={"Content-Type": "application/json"},
+                body=response_body,
+                duration_ms=duration_ms
+            )
+            
         except httpx.ConnectError as e:
+            # Log error response
+            conv_logger.log_api_response(
+                agent_name=agent_name,
+                provider="ollama",
+                status_code=0,
+                headers={},
+                body={"error": str(e)},
+                duration_ms=(time.time() - start_time) * 1000
+            )
             raise Exception(
                 f"\nOllama connection failed at {host}. Check if the server is running."
             ) from e
         except Exception as e:
+            # Log error response
+            conv_logger.log_api_response(
+                agent_name=agent_name,
+                provider="ollama",
+                status_code=500,
+                headers={},
+                body={"error": str(e)},
+                duration_ms=(time.time() - start_time) * 1000
+            )
+            
             if hasattr(e, 'status_code') and e.status_code == 404:
                 animate_thinking(f"Downloading {self.model}...")
                 client.pull(self.model)
-                self.ollama_fn(history, verbose)
+                return self.ollama_fn(history, verbose)
             if "refused" in str(e).lower():
                 raise Exception(
                     f"Ollama connection refused at {host}. Is the server running?"
