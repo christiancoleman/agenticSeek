@@ -38,7 +38,7 @@ python test_router.py -q "Create a web scraper in Python" -v
 python test_router.py -b test_queries.txt
 
 # Add custom examples before testing
-python test_router.py -e custom_examples.json -i
+python test_router.py -e test_examples.json -i
 ```
 
 ### 3. Test Script Features

@@ -8,6 +8,7 @@ import sys
 import os
 import argparse
 import json
+import configparser
 from typing import List, Tuple
 
 # Add parent directory to path
@@ -17,8 +18,10 @@ from sources.router import AgentRouter
 from sources.agents.casual_agent import CasualAgent
 from sources.agents.browser_agent import BrowserAgent
 from sources.agents.code_agent import CoderAgent
-from sources.agents.planner_agent import FileAgent, PlannerAgent
+from sources.agents.file_agent import FileAgent
+from sources.agents.planner_agent import PlannerAgent
 from sources.utility import pretty_print
+from sources.llm_provider import Provider
 
 def test_single_query(router: AgentRouter, query: str, verbose: bool = False):
     """Test a single query through the router."""
@@ -173,14 +176,27 @@ def main():
     
     args = parser.parse_args()
     
+    # Load configuration
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    
+    # Initialize provider from config
+    provider_name = config.get('MAIN', 'provider_name', fallback='ollama')
+    model = config.get('MAIN', 'provider_model', fallback='llama3:latest')
+    server = config.get('MAIN', 'provider_server_address', fallback='127.0.0.1:11434')
+    is_local = config.getboolean('MAIN', 'is_local', fallback=True)
+    
+    print(f"Initializing provider: {provider_name} with model {model}...")
+    provider = Provider(provider_name, model, server, is_local)
+    
     # Initialize agents
     print("Initializing agents and router...")
     agents = [
-        CasualAgent("assistant", "prompts/base/casual_agent.txt", None),
-        BrowserAgent("browser", "prompts/base/browser_agent.txt", None),
-        CoderAgent("coder", "prompts/base/coder_agent.txt", None),
-        FileAgent("file", "prompts/base/file_agent.txt", None),
-        PlannerAgent("planner", "prompts/base/planner_agent.txt", None, None)
+        CasualAgent("Casual", "prompts/base/casual_agent.txt", provider),
+        BrowserAgent("Web", "prompts/base/browser_agent.txt", provider),
+        CoderAgent("Coder", "prompts/base/coder_agent.txt", provider),
+        FileAgent("File", "prompts/base/file_agent.txt", provider),
+        PlannerAgent("Planner", "prompts/base/planner_agent.txt", provider)
     ]
     
     # Initialize router
