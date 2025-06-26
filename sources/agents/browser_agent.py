@@ -157,23 +157,29 @@ class BrowserAgent(Agent):
         Error: x.com does not discuss anything related to the user’s query and no navigation link are usefull.
         Action: {Action.GO_BACK.value}
 
-        Example 3 (clear definitive query answer found or enought notes taken):
+        Example 4 (clear definitive query answer found or enought notes taken):
         I took 10 notes so far with enought finding to answer user question.
         Therefore I should exit the web browser.
         Action: {Action.REQUEST_EXIT.value}
 
-        Example 4 (loging form visible):
-
+        Example 5 (login form visible):
         Note: I am on the login page, I will type the given username and password. 
         Action:
         [username_field](David)
         [password_field](edgerunners77)
 
+        ---------------------------------------------------------------------------------------
+        
         Remember, user asked:
+        
         {user_prompt}
+        
         You previously took these notes:
+        
         {notes}
-        Do not Step-by-Step explanation. Write comprehensive Notes or Error as a long paragraph followed by your action.
+        
+        Do not give a step-by-step explanation. 
+        Write comprehensive Notes or Error as a long paragraph followed by your action.
         You must always take notes.
         """
     
@@ -264,6 +270,7 @@ class BrowserAgent(Agent):
         Following a human request:
         {user_query}
         A web browsing AI made the following finding across different pages:
+        
         {search_note}
 
         Expand on the finding or step that lead to success, and provide a conclusion that answer the request. Include link when possible.
@@ -275,16 +282,8 @@ class BrowserAgent(Agent):
         return f"""
         Current date: {self.date}
         Make a efficient search engine query to help users with their request:
+        
         {user_prompt}
-        Example:
-        User: "go to twitter, login with username toto and password pass79 to my twitter and say hello everyone "
-        You: search: Twitter login page. 
-
-        User: "I need info on the best laptops for AI this year."
-        You: "search: best laptops 2025 to run Machine Learning model, reviews"
-
-        User: "Search for recent news about space missions."
-        You: "search: Recent space missions news, {self.date}"
 
         Do not explain, do not write anything beside the search query.
         Except if query does not make any sense for a web search then explain why and say {Action.REQUEST_EXIT.value}

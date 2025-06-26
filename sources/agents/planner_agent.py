@@ -181,7 +181,7 @@ class PlannerAgent(Agent):
         """
         if agents_tasks == []:
             pretty_print(answer, color="warning")
-            pretty_print("Failed to make a plan. This can happen with (too) small LLM. Clarify your request and insist on it making a plan within ```json.", color="failure")
+            pretty_print("Failed to make a plan. Clarify your request and insist on it making a plan within ```json.", color="failure")
             return
         pretty_print("\n▂▘ P L A N ▝▂", color="status")
         for task_name, task in agents_tasks:

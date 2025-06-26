@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    ["Create a React component for user authentication", "code"],
+    ["Find the latest research on quantum computing and summarize it", "web"],
+    ["Organize my Downloads folder by file type", "files"],
+    ["Build a REST API with FastAPI and PostgreSQL", "code"],
+    ["Search for the best Italian restaurants in San Francisco", "web"],
+    ["What's the meaning of life?", "talk"],
+    ["Debug this TypeScript error in my Next.js app", "code"],
+    ["Find all PDF files created last week", "files"],
+    ["Research competitors for my startup idea", "web"],
+    ["Tell me about your capabilities", "talk"]
+  ],
+  "complexity": [
+    ["Write a hello world program", "LOW"],
+    ["Build a full-stack e-commerce platform with payment integration", "HIGH"],
+    ["Search for Python tutorials", "LOW"],
+    ["Create a machine learning pipeline to process real-time data and deploy it to production", "HIGH"],
+    ["Find a file named notes.txt", "LOW"],
+    ["Analyze my codebase, identify performance bottlenecks, and refactor the critical paths", "HIGH"],
+    ["What time is it?", "LOW"],
+    ["Research AI companies, analyze their strategies, and create a comprehensive report", "HIGH"]
+  ]
+}
