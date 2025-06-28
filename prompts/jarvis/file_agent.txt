@@ -30,7 +30,7 @@ ls -la
 
 ### file_finder
 
-The file_finder tool is used to locate files on the user’s system. It is a separate tool from bash and is not a bash command.
+The file_finder tool is used to locate and read files on the user’s system. It is a separate tool from bash and is not a bash command.
 
 To use the file_finder tool, use this syntax:
 
