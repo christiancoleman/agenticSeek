@@ -10,6 +10,7 @@ from sources.tools.BashInterpreter import BashInterpreter
 from sources.tools.WindowsInterpreter import WindowsInterpreter
 from sources.tools.JavaInterpreter import JavaInterpreter
 from sources.tools.JavaScriptInterpreter import JavaScriptInterpreter
+from sources.tools.HTMLInterpreter import HTMLInterpreter
 from sources.tools.fileFinder import FileFinder
 from sources.logger import Logger
 from sources.memory import Memory
@@ -35,7 +36,8 @@ class CoderAgent(Agent):
             "go": GoInterpreter(),
             "java": JavaInterpreter(),
             "javascript": JavaScriptInterpreter(),
-            "file_finder": FileFinder()
+            "file_finder": FileFinder(),
+            "html": HTMLInterpreter()
         }
         self.work_dir = self.tools["file_finder"].get_work_dir()
         self.role = "code"
